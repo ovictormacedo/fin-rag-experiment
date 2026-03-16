@@ -13,7 +13,7 @@ class QueryBuilderService:
         if not latest_memory or not latest_memory.answer:
             return query
 
-        rewrite_prompt = f"""Given the previous querions and answer and the user's new question,
+        rewrite_prompt = f"""Given the previous questions and answer and the user's new question,
         write a new search query that captures what the user is asking now but include previous 
         information if that helps complete the semantic of the new query.
         Output only the search query, nothing else.
