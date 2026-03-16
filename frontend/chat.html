@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="chat.css">
+</head>
+<body>
+  <div class="chat-container">
+    <header class="chat-header">
+      <div class="header-brand">
+        <span class="logo">◆</span>
+        <h1>Stock Chat</h1>
+      </div>
+      <span class="status">
+        <span class="status-dot"></span>
+        Local
+      </span>
+    </header>
+
+    <main class="chat-main">
+      <div class="messages" id="messages">
+        <div class="message message-assistant">
+          <span class="message-role">AI</span>
+          <p class="message-content">Hello, how can I help you?</p>
+        </div>
+      </div>
+
+      <form class="input-area" id="chat-form">
+        <textarea
+          id="user-input"
+          placeholder="Type your message..."
+          rows="1"
+          maxlength="4096"
+        ></textarea>
+        <button type="submit" class="send-btn" id="send-btn" aria-label="Send message">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+          </svg>
+        </button>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('user-input');
+    const messagesEl = document.getElementById('messages');
+
+    // Auto-resize textarea
+    input.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        form.dispatchEvent(new Event('submit'));
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+
+      appendMessage('user', text);
+      input.value = '';
+      input.style.height = 'auto';
+
+      const loadingEl = appendLoadingMessage();
+      try {
+        const reply = await getLocalAIResponse(text);
+        loadingEl.remove();
+        appendMessage('assistant', reply);
+      } catch (e) {
+        loadingEl.remove();
+        appendMessage('assistant', `Error: ${e.message}`);
+      }
+    });
+
+    function appendLoadingMessage() {
+      const div = document.createElement('div');
+      div.className = 'message message-assistant message-loading';
+      div.innerHTML = `
+        <span class="message-role">AI</span>
+        <div class="message-content loading-content">
+          <span class="loading-dot"></span>
+          <span class="loading-dot"></span>
+          <span class="loading-dot"></span>
+        </div>
+      `;
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return div;
+    }
+
+    function appendMessage(role, content) {
+      const div = document.createElement('div');
+      div.className = `message message-${role}`;
+      div.innerHTML = `
+        <span class="message-role">${role === 'user' ? 'You' : 'AI'}</span>
+        <p class="message-content">${escapeHtml(content)}</p>
+      `;
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    const API_BASE = 'http://localhost:8000';
+
+    async function getLocalAIResponse(userMessage) {
+      try {
+        const res = await fetch(`${API_BASE}/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: userMessage })
+        });
+        if (!res.ok) {
+          const err = await res.text();
+          return `Error: ${res.status} – ${err}`;
+        }
+        const data = await res.json();
+        return data.reply || 'No reply.';
+      } catch (e) {
+        return `Request failed: ${e.message}. Is the API running? (python faiss_api.py). Is Ollama running with gemma3:4b?`;
+      }
+    }
+  </script>
+</body>
+</html>

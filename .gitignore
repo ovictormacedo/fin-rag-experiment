@@ -1,0 +1,4 @@
+backend/data_backup
+backend/data/faiss_index
+backend/data/faiss_metadata.json
+*.pyc
